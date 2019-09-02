@@ -1,0 +1,109 @@
+From 33fc0fbf1b10f479b324162a7449c648f951a0d1 Mon Sep 17 00:00:00 2001
+From: tingsung <tingsung@msi.com>
+Date: Thu, 29 Aug 2019 14:58:45 +0800
+Subject: [PATCH] barco feature: reset key of factory reset
+
+Signed-off-by: tingsung <tingsung@msi.com>
+---
+ .../server/policy/PhoneWindowManager.java     | 52 ++++++++++++++++++-
+ 1 file changed, 51 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index 6cd5e0564c7..03751e31e3a 100644
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -262,6 +262,7 @@ import android.view.animation.AnimationSet;
+ import android.view.animation.AnimationUtils;
+ import android.view.autofill.AutofillManagerInternal;
+ import android.view.inputmethod.InputMethodManagerInternal;
++import android.widget.Toast;
+ 
+ import com.android.internal.R;
+ import com.android.internal.accessibility.AccessibilityShortcutController;
+@@ -859,6 +860,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+     private float mdeltax, mdeltay;
+     boolean keydown;
+ 
++    private final static int RESET_KEY_SCANCODE = 183;
++    private final static int RESET_KEY_DELAY_SHOW_TOAST = 2*1000; // 2 seconds
++    private final static int RESET_KEY_DELAY_DO_FACTORY_RESET = 5*1000; // 5 seconds
++    private final static String RESET_KEY_TOAST_STRING = "If you keep pressing the button for 5 seconds, the Base Unit will be reset to factory defaults.";
++    private PowerManager.WakeLock mResetKeyHoldingScreenWakeLock;
++
+     public Handler mKeyMouseHandler = new Handler() {
+         public void handleMessage(Message msg) {
+             switch(msg.what){
+@@ -2395,6 +2402,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+                     }
+                 });
+         mScreenshotHelper = new ScreenshotHelper(mContext);
++
++        mResetKeyHoldingScreenWakeLock = mPowerManager.newWakeLock(
++                PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ON_AFTER_RELEASE,
++                "PhoneWindowManager.mResetKeyHoldingScreenWakeLock");
++        mResetKeyHoldingScreenWakeLock.setReferenceCounted(false);
+     }
+ 
+     /**
+@@ -6114,7 +6126,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         setHdmiPlugged(!mHdmiPlugged);
+     }
+ 
+-
+     /** {@inheritDoc} */
+     @Override
+     public int interceptKeyBeforeQueueing(KeyEvent event, int policyFlags) {
+@@ -6195,6 +6206,23 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+             return result;
+         }
+ 
++        // barco feature: reset key
++        if (event.getScanCode() == RESET_KEY_SCANCODE) {
++            Log.d(TAG, "reset key, " + (down ? "down" : "up"));
++            if (down) {
++                wakeUp(event.getEventTime(), true, "android.policy:RESET TOAST");
++                mResetKeyHoldingScreenWakeLock.acquire();
++                mHandler.postDelayed(mResetKeyShowToastRunnable, RESET_KEY_DELAY_SHOW_TOAST);
++                mHandler.postDelayed(mResetKeyDoFactoryResetRunnable, RESET_KEY_DELAY_DO_FACTORY_RESET);
++            } else {
++                mResetKeyHoldingScreenWakeLock.release();
++                mHandler.removeCallbacks(mResetKeyShowToastRunnable);
++                mHandler.removeCallbacks(mResetKeyDoFactoryResetRunnable);
++            }
++            return 0;
++        }
++
++
+         // Enable haptics if down and virtual key without multiple repetitions. If this is a hard
+         // virtual key such as a navigation bar button, only vibrate if flag is enabled.
+         final boolean isNavBarVirtKey = ((event.getFlags() & KeyEvent.FLAG_VIRTUAL_HARD_KEY) != 0);
+@@ -9119,4 +9147,26 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         }
+         return false;
+     }
++
++    private final Runnable mResetKeyShowToastRunnable = new Runnable() {
++        @Override
++        public void run() {
++            Log.d(TAG, "reset key, show toast runnable");
++            Toast.makeText(mContext, RESET_KEY_TOAST_STRING, Toast.LENGTH_LONG).show();
++        }
++    };
++
++    private final Runnable mResetKeyDoFactoryResetRunnable = new Runnable() {
++        @Override
++        public void run() {
++            Log.d(TAG, "reset key, do factory reset runnable");
++            Intent intent = new Intent(Intent.ACTION_FACTORY_RESET);
++            intent.setPackage("android");
++            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
++            intent.putExtra(Intent.EXTRA_REASON, "android.policy:RESET_KEY");
++            intent.putExtra(Intent.EXTRA_WIPE_EXTERNAL_STORAGE, true);
++            intent.putExtra(Intent.EXTRA_WIPE_ESIMS, true);
++            mContext.sendBroadcast(intent);
++        }
++    };
+ }
+-- 
+2.21.0
+

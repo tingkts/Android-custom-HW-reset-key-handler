@@ -1,0 +1,127 @@
+From 894c0e811ec749246eb852450bd61efb98b81a69 Mon Sep 17 00:00:00 2001
+From: tingsung <tingsung@msi.com>
+Date: Fri, 30 Aug 2019 16:17:11 +0800
+Subject: [PATCH] google issue: workaround of Settings crash when tap button
+ "ERASE EVERYTHING"
+
+Signed-off-by: tingsung <tingsung@msi.com>
+---
+ .../android/settings/MasterClearConfirm.java  | 87 ++++++++++---------
+ 1 file changed, 47 insertions(+), 40 deletions(-)
+
+diff --git a/src/com/android/settings/MasterClearConfirm.java b/src/com/android/settings/MasterClearConfirm.java
+index a92c8f85c7..4b0afed728 100644
+--- a/src/com/android/settings/MasterClearConfirm.java
++++ b/src/com/android/settings/MasterClearConfirm.java
+@@ -39,6 +39,8 @@ import com.android.settingslib.RestrictedLockUtils;
+ 
+ import static com.android.settingslib.RestrictedLockUtils.EnforcedAdmin;
+ 
++import android.os.ServiceManager;
++
+ /**
+  * Confirm and execute a reset of the device to a clean "just out of the box"
+  * state.  Multiple confirmations are required: first, a general "are you sure
+@@ -50,7 +52,6 @@ import static com.android.settingslib.RestrictedLockUtils.EnforcedAdmin;
+  * This is the confirmation screen.
+  */
+ public class MasterClearConfirm extends InstrumentedFragment {
+-
+     private View mContentView;
+     private boolean mEraseSdCard;
+     private boolean mEraseEsims;
+@@ -67,46 +68,52 @@ public class MasterClearConfirm extends InstrumentedFragment {
+                 return;
+             }
+ 
+-            final PersistentDataBlockManager pdbManager = (PersistentDataBlockManager)
+-                    getActivity().getSystemService(Context.PERSISTENT_DATA_BLOCK_SERVICE);
+-            final OemLockManager oemLockManager = (OemLockManager)
+-                    getActivity().getSystemService(Context.OEM_LOCK_SERVICE);
+-
+-            if (pdbManager != null && !oemLockManager.isOemUnlockAllowed() &&
+-                    Utils.isDeviceProvisioned(getActivity())) {
+-                // if OEM unlock is allowed, the persistent data block will be wiped during FR
+-                // process. If disabled, it will be wiped here, unless the device is still being
+-                // provisioned, in which case the persistent data block will be preserved.
+-                new AsyncTask<Void, Void, Void>() {
+-                    int mOldOrientation;
+-                    ProgressDialog mProgressDialog;
+-
+-                    @Override
+-                    protected Void doInBackground(Void... params) {
+-                        pdbManager.wipe();
+-                        return null;
+-                    }
+-
+-                    @Override
+-                    protected void onPostExecute(Void aVoid) {
+-                        mProgressDialog.hide();
+-                        if (getActivity() != null) {
+-                            getActivity().setRequestedOrientation(mOldOrientation);
+-                            doMasterClear();
++            if (ServiceManager.checkService(Context.PERSISTENT_DATA_BLOCK_SERVICE) != null &&
++                    ServiceManager.checkService(Context.PERSISTENT_DATA_BLOCK_SERVICE) != null) {
++
++                final PersistentDataBlockManager pdbManager = (PersistentDataBlockManager)
++                        getActivity().getSystemService(Context.PERSISTENT_DATA_BLOCK_SERVICE);
++                final OemLockManager oemLockManager = (OemLockManager)
++                        getActivity().getSystemService(Context.OEM_LOCK_SERVICE);
++
++                if (pdbManager != null && !oemLockManager.isOemUnlockAllowed() &&
++                        Utils.isDeviceProvisioned(getActivity())) {
++                    // if OEM unlock is allowed, the persistent data block will be wiped during FR
++                    // process. If disabled, it will be wiped here, unless the device is still being
++                    // provisioned, in which case the persistent data block will be preserved.
++                    new AsyncTask<Void, Void, Void>() {
++                        int mOldOrientation;
++                        ProgressDialog mProgressDialog;
++
++                        @Override
++                        protected Void doInBackground(Void... params) {
++                            pdbManager.wipe();
++                            return null;
++                        }
++
++                        @Override
++                        protected void onPostExecute(Void aVoid) {
++                            mProgressDialog.hide();
++                            if (getActivity() != null) {
++                                getActivity().setRequestedOrientation(mOldOrientation);
++                                doMasterClear();
++                            }
++                        }
++
++                        @Override
++                        protected void onPreExecute() {
++                            mProgressDialog = getProgressDialog();
++                            mProgressDialog.show();
++
++                            // need to prevent orientation changes as we're about to go into
++                            // a long IO request, so we won't be able to access inflate resources on flash
++                            mOldOrientation = getActivity().getRequestedOrientation();
++                            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
+                         }
+-                    }
+-
+-                    @Override
+-                    protected void onPreExecute() {
+-                        mProgressDialog = getProgressDialog();
+-                        mProgressDialog.show();
+-
+-                        // need to prevent orientation changes as we're about to go into
+-                        // a long IO request, so we won't be able to access inflate resources on flash
+-                        mOldOrientation = getActivity().getRequestedOrientation();
+-                        getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
+-                    }
+-                }.execute();
++                    }.execute();
++                } else {
++                    doMasterClear();
++                }
+             } else {
+                 doMasterClear();
+             }
+-- 
+2.21.0
+
