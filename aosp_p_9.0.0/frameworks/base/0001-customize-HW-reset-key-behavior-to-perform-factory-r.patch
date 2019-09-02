@@ -1,0 +1,176 @@
+From 87f9433881024a94c355765d4712f43addf25b92 Mon Sep 17 00:00:00 2001
+From: tingsung <tingsung@msi.com>
+Date: Mon, 2 Sep 2019 15:42:25 +0800
+Subject: [PATCH] customize HW reset key behavior to perform factory reset
+
+---
+ core/res/res/values-fr/strings.xml            |  1 +
+ core/res/res/values-nl/strings.xml            |  1 +
+ core/res/res/values-zh-rCN/strings.xml        |  1 +
+ core/res/res/values-zh-rTW/strings.xml        |  1 +
+ core/res/res/values/strings.xml               |  2 +
+ core/res/res/values/symbols.xml               |  1 +
+ .../server/policy/PhoneWindowManager.java     | 51 ++++++++++++++++++-
+ 7 files changed, 57 insertions(+), 1 deletion(-)
+
+diff --git a/core/res/res/values-fr/strings.xml b/core/res/res/values-fr/strings.xml
+index 04adbe7e99e..a6b54e7f203 100644
+--- a/core/res/res/values-fr/strings.xml
++++ b/core/res/res/values-fr/strings.xml
+@@ -1886,4 +1886,5 @@
+     <string name="notification_appops_microphone_active" msgid="4335305527588191730">"Micro"</string>
+     <string name="notification_appops_overlay_active" msgid="633813008357934729">"se superpose aux autres applications sur l\'écran"</string>
+     <string name="car_loading_profile" msgid="3545132581795684027">"Chargement…"</string>
++    <string name="barco_reset_key_toast">"Si vous maintenez le bouton enfoncé pendant 5 secondes, la base sera réinitialisée aux paramètres d'usine."</string>
+ </resources>
+diff --git a/core/res/res/values-nl/strings.xml b/core/res/res/values-nl/strings.xml
+index 055a3ced22e..ccc544fc330 100644
+--- a/core/res/res/values-nl/strings.xml
++++ b/core/res/res/values-nl/strings.xml
+@@ -1886,4 +1886,5 @@
+     <string name="notification_appops_microphone_active" msgid="4335305527588191730">"Microfoon"</string>
+     <string name="notification_appops_overlay_active" msgid="633813008357934729">"wordt weergegeven vóór andere apps op je scherm"</string>
+     <string name="car_loading_profile" msgid="3545132581795684027">"Laden"</string>
++    <string name="barco_reset_key_toast">"Als u de knop 5 seconden ingedrukt houdt, wordt de basiseenheid teruggezet naar de fabrieksinstellingen."</string>
+ </resources>
+diff --git a/core/res/res/values-zh-rCN/strings.xml b/core/res/res/values-zh-rCN/strings.xml
+index ba9f6b5936e..ccfd61d9949 100644
+--- a/core/res/res/values-zh-rCN/strings.xml
++++ b/core/res/res/values-zh-rCN/strings.xml
+@@ -1886,4 +1886,5 @@
+     <string name="notification_appops_microphone_active" msgid="4335305527588191730">"麦克风"</string>
+     <string name="notification_appops_overlay_active" msgid="633813008357934729">"显示在屏幕上其他应用的上层"</string>
+     <string name="car_loading_profile" msgid="3545132581795684027">"正在加载"</string>
++    <string name="barco_reset_key_toast">如果按住按钮5秒钟，基本单元将重置为出厂默认值。</string>
+ </resources>
+diff --git a/core/res/res/values-zh-rTW/strings.xml b/core/res/res/values-zh-rTW/strings.xml
+index c41d0ec76d9..c15a74e77c2 100644
+--- a/core/res/res/values-zh-rTW/strings.xml
++++ b/core/res/res/values-zh-rTW/strings.xml
+@@ -1886,4 +1886,5 @@
+     <string name="notification_appops_microphone_active" msgid="4335305527588191730">"麥克風"</string>
+     <string name="notification_appops_overlay_active" msgid="633813008357934729">"顯示在畫面上的其他應用程式上層"</string>
+     <string name="car_loading_profile" msgid="3545132581795684027">"載入中"</string>
++    <string name="barco_reset_key_toast">如果按住按鈕5秒鐘，基本單元將重置為出廠默認值。</string>
+ </resources>
+diff --git a/core/res/res/values/strings.xml b/core/res/res/values/strings.xml
+index f6600462ea7..dd5e5bc77ba 100644
+--- a/core/res/res/values/strings.xml
++++ b/core/res/res/values/strings.xml
+@@ -4995,4 +4995,6 @@
+     <!-- Strings for car -->
+     <!-- String displayed when loading a user in the car [CHAR LIMIT=30] -->
+     <string name="car_loading_profile">Loading</string>
++
++    <string name="barco_reset_key_toast">If you keep pressing the button for 5 seconds, the Base Unit will be reset to factory defaults.</string>
+ </resources>
+diff --git a/core/res/res/values/symbols.xml b/core/res/res/values/symbols.xml
+index d893468a53f..32537039f23 100644
+--- a/core/res/res/values/symbols.xml
++++ b/core/res/res/values/symbols.xml
+@@ -1235,6 +1235,7 @@
+   <java-symbol type="string" name="demo_restarting_message" />
+   <java-symbol type="string" name="conference_call" />
+   <java-symbol type="string" name="tooltip_popup_title" />
++  <java-symbol type="string" name="barco_reset_key_toast" />
+ 
+   <java-symbol type="plurals" name="bugreport_countdown" />
+   <java-symbol type="plurals" name="last_num_days" />
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index 6cd5e0564c7..4aa1eb001c4 100644
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -262,6 +262,7 @@ import android.view.animation.AnimationSet;
+ import android.view.animation.AnimationUtils;
+ import android.view.autofill.AutofillManagerInternal;
+ import android.view.inputmethod.InputMethodManagerInternal;
++import android.widget.Toast;
+ 
+ import com.android.internal.R;
+ import com.android.internal.accessibility.AccessibilityShortcutController;
+@@ -859,6 +860,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+     private float mdeltax, mdeltay;
+     boolean keydown;
+ 
++    private final static int RESET_KEY_SCANCODE = 183;
++    private final static int RESET_KEY_DELAY_SHOW_TOAST = 2*1000; // 2 seconds
++    private final static int RESET_KEY_DELAY_DO_FACTORY_RESET = 7*1000; // 7 seconds
++    private PowerManager.WakeLock mResetKeyHoldingScreenWakeLock;
++
+     public Handler mKeyMouseHandler = new Handler() {
+         public void handleMessage(Message msg) {
+             switch(msg.what){
+@@ -2395,6 +2401,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+                     }
+                 });
+         mScreenshotHelper = new ScreenshotHelper(mContext);
++
++        mResetKeyHoldingScreenWakeLock = mPowerManager.newWakeLock(
++                PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ON_AFTER_RELEASE,
++                "PhoneWindowManager.mResetKeyHoldingScreenWakeLock");
++        mResetKeyHoldingScreenWakeLock.setReferenceCounted(false);
+     }
+ 
+     /**
+@@ -6114,7 +6125,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         setHdmiPlugged(!mHdmiPlugged);
+     }
+ 
+-
+     /** {@inheritDoc} */
+     @Override
+     public int interceptKeyBeforeQueueing(KeyEvent event, int policyFlags) {
+@@ -6195,6 +6205,23 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+             return result;
+         }
+ 
++        // barco feature: reset key
++        if (event.getScanCode() == RESET_KEY_SCANCODE) {
++            Log.d(TAG, "reset key, " + (down ? "down" : "up"));
++            if (down) {
++                wakeUp(event.getEventTime(), true, "android.policy:RESET TOAST");
++                mResetKeyHoldingScreenWakeLock.acquire();
++                mHandler.postDelayed(mResetKeyShowToastRunnable, RESET_KEY_DELAY_SHOW_TOAST);
++                mHandler.postDelayed(mResetKeyDoFactoryResetRunnable, RESET_KEY_DELAY_DO_FACTORY_RESET);
++            } else {
++                mResetKeyHoldingScreenWakeLock.release();
++                mHandler.removeCallbacks(mResetKeyShowToastRunnable);
++                mHandler.removeCallbacks(mResetKeyDoFactoryResetRunnable);
++            }
++            return 0;
++        }
++
++
+         // Enable haptics if down and virtual key without multiple repetitions. If this is a hard
+         // virtual key such as a navigation bar button, only vibrate if flag is enabled.
+         final boolean isNavBarVirtKey = ((event.getFlags() & KeyEvent.FLAG_VIRTUAL_HARD_KEY) != 0);
+@@ -9119,4 +9146,26 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         }
+         return false;
+     }
++
++    private final Runnable mResetKeyShowToastRunnable = new Runnable() {
++        @Override
++        public void run() {
++            Log.d(TAG, "reset key, show toast runnable");
++            Toast.makeText(mContext, mContext.getString(com.android.internal.R.string.barco_reset_key_toast), Toast.LENGTH_LONG).show();
++        }
++    };
++
++    private final Runnable mResetKeyDoFactoryResetRunnable = new Runnable() {
++        @Override
++        public void run() {
++            Log.d(TAG, "reset key, do factory reset runnable");
++            Intent intent = new Intent(Intent.ACTION_FACTORY_RESET);
++            intent.setPackage("android");
++            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
++            intent.putExtra(Intent.EXTRA_REASON, "android.policy:RESET_KEY");
++            intent.putExtra(Intent.EXTRA_WIPE_EXTERNAL_STORAGE, true);
++            intent.putExtra(Intent.EXTRA_WIPE_ESIMS, true);
++            mContext.sendBroadcast(intent);
++        }
++    };
+ }
+-- 
+2.21.0
+
