@@ -8,7 +8,9 @@ Custom HW reset key's handler to perform factory reset.
 
 </br>
 
-### Behavior use cases
+## Behavior use cases
+
+<br />
 
 > Use case 1 : screen on, stay in Launcher,
 
@@ -20,6 +22,7 @@ Custom HW reset key's handler to perform factory reset.
 
     During the entire process screen lights up and does not enter the dark screen standby state.
 
+<br />
 
 > Use case 2 : screen on , stay in Launcher, no settings of Keyguard lock, screen turn off by auto timeout of no user activity. (Keyguard has not shown)
 
@@ -31,6 +34,7 @@ Custom HW reset key's handler to perform factory reset.
 
     After pressing HW reset key, screen lights up and does not enter the dark screen standby state.
 
+<br />
 
 > Use case 3 : screen on , stay in Launcher, has Keyguard lock settings, screen turn off by auto timeout of no user activity. (Keyguard has shown)
 
@@ -42,5 +46,6 @@ Custom HW reset key's handler to perform factory reset.
 
     After pressing HW reset key, screen lights up and stay in Keyguard lock scrren, then screen turn off by auto timeout of user activity monitor.
 
+<br />
 </br>
 [aosp_p_9.0.0](https://github.com/tingkts/Android-custom-HW-reset-key-handler/tree/master/aosp_p_9.0.0) is the patch which base on AOSP codebase android P (9.0.0).
